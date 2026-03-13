@@ -423,7 +423,7 @@ canvas.mpg-chart{width:100%!important;height:160px!important}
         <div class="fct">📥 Import from Fuelio</div>
         <div class="dz" id="dz" onclick="document.getElementById('csvIn').click()" ondragover="event.preventDefault();this.classList.add('drag')" ondragleave="this.classList.remove('drag')" ondrop="onDrop(event)">
           <div class="dz-ico">📂</div>
-          <p><strong>Tap to select Fuelio CSV</strong><br>or drag & drop here<br><br>Fuelio → Menu → Backup → Export CSV<br>Select <strong>fuel.csv</strong> or <strong>costs.csv</strong></p>
+          <p><strong>Tap to select your Fuelio CSV</strong><br>or drag & drop here<br><br>Fuelio → Menu → Backup → <strong>Export CSV</strong><br>Select the exported <strong>Fuelio_YYYY-MM-DD.csv</strong> file<br>Imports fuel fill-ups + costs in one shot</p>
         </div>
         <input type="file" id="csvIn" accept=".csv" style="display:none" onchange="onFile(event)">
         <div id="impPrev" style="display:none">
@@ -445,9 +445,9 @@ canvas.mpg-chart{width:100%!important;height:160px!important}
           1. Open Fuelio → Menu<br>
           2. Tap <b style="color:var(--txt)">Backup &amp; Restore</b><br>
           3. Tap <b style="color:var(--txt)">Export to CSV / Spreadsheet</b><br>
-          4. Save files, then come back here<br>
-          &nbsp;• <b style="color:var(--fuel)">fuel.csv</b> → fill-up history + auto MPG calc<br>
-          &nbsp;• <b style="color:var(--svc)">costs.csv</b> → service &amp; wash history
+          4. It exports <b style="color:var(--fuel)">one combined file</b> — e.g. <b style="color:var(--fuel)">Fuelio_2026-03-12.csv</b><br>
+          5. Come back here → tap the import area → select that file<br>
+          &nbsp;• Fuel fill-ups, service costs and wash costs all import at once
         </div>
       </div>
     </div>
@@ -1084,64 +1084,137 @@ function bRow(e,vn){
 }
 
 // ── FUELIO IMPORT ─────────────────────────────────────────────────
+// Handles Fuelio's single combined CSV with ## section headers
 function onDrop(e){e.preventDefault();document.getElementById('dz').classList.remove('drag');const f=e.dataTransfer?.files?.[0];if(f)procCSV(f);}
 function onFile(e){const f=e.target.files?.[0];if(f)procCSV(f);e.target.value='';}
+
 function procCSV(file){
   const r=new FileReader();
-  r.onload=function(e){
-    const rows=parseCSV(e.target.result);
-    if(!rows.length){toast('⚠️ Empty file');return;}
-    const type=detType(rows[0]);
-    if(!type){toast('⚠️ Unrecognized format');return;}
-    impData=convRows(rows,type);
-    if(!impData.length){toast('⚠️ No valid rows');return;}
-    const dates=impData.map(e=>e.date).filter(Boolean).sort();
-    document.getElementById('ip-f').textContent=file.name;
-    document.getElementById('ip-t').textContent=type==='fuel'?'⛽ Fuel fill-ups':'🔧 Costs / Services';
-    document.getElementById('ip-c').textContent=impData.length+' records';
-    document.getElementById('ip-r').textContent=(dates[0]||'?')+' → '+(dates[dates.length-1]||'?');
-    document.getElementById('impPrev').style.display='block';
-    document.getElementById('pbar').style.display='none';
-    document.getElementById('pfill').style.width='0%';
+  r.onload=function(ev){
+    const text=ev.target.result;
+    if(text.includes('## Log')||text.includes('## Vehicle')){
+      parseFuelioExport(text,file.name);
+    } else {
+      toast('⚠️ Use the full Fuelio export — Menu → Backup → Export CSV');
+    }
   };
   r.readAsText(file);
 }
-function parseCSV(text){
-  return text.trim().split(/\r?\n/).map(line=>{
-    const cells=[];let cur='',inQ=false;
-    for(let i=0;i<line.length;i++){if(line[i]==='"'){inQ=!inQ;}else if(line[i]===','&&!inQ){cells.push(cur.trim());cur='';}else{cur+=line[i];}}
-    cells.push(cur.trim());return cells;
-  }).filter(r=>r.some(c=>c));
+
+function parseLine(line){
+  const cells=[];let cur='',inQ=false;
+  for(let i=0;i<line.length;i++){
+    if(line[i]==='"'){inQ=!inQ;}
+    else if(line[i]===','&&!inQ){cells.push(cur.trim());cur='';}
+    else{cur+=line[i];}
+  }
+  cells.push(cur.trim());
+  return cells;
 }
-function detType(h){
-  const hh=h.map(c=>c.toLowerCase().replace(/[^a-z]/g,''));
-  if(hh.some(c=>c.includes('quantity')||c.includes('volume')||c.includes('fueling')))return 'fuel';
-  if(hh.some(c=>c.includes('cost')||c.includes('expense')||c.includes('category')))return 'cost';
-  if(h.length>=7)return 'fuel';
-  return null;
-}
-function convRows(rows,type){
-  const headers=rows[0].map(h=>h.toLowerCase().replace(/\s+/g,'_').replace(/[^a-z0-9_]/g,''));
-  const col=name=>{
-    const al={date:['date','date_time','fillup_date','datetime'],gallons:['quantity','volume','gallons','liters','amount'],ppg:['price_per_unit','price','unit_price','price_per_liter'],total:['total_price','total','total_cost','cost','price'],odo:['mileage','odometer','odo','trip_odometer'],station:['station','gas_station','place','location','fuel_station','title'],notes:['note','notes','comment','comments'],category:['category','type','cost_type','title'],shop:['place','location','mechanic','shop','title']};
-    for(const k of(al[name]||[name])){const i=headers.findIndex(h=>h===k||h.includes(k));if(i>=0)return i;}
-    return -1;
-  };
+
+function parseFuelioExport(text,filename){
   const vid=S.activeVehicle;
-  const get=(row,name)=>{const i=col(name);return i>=0?(row[i]||'').trim():'';};
-  return rows.slice(1).filter(r=>r.some(c=>c)).map(row=>{
-    const date=pDate(get(row,'date'));if(!date)return null;
-    if(type==='fuel'){
-      const gal=cNum(get(row,'gallons'));
-      const total=cNum(get(row,'total'))||(gal&&get(row,'ppg')?(parseFloat(gal)*parseFloat(cNum(get(row,'ppg')))).toFixed(2):'');
-      return{id:uid(),type:'fuel',vid,ts:new Date().toISOString(),date,station:get(row,'station')||'Fuelio',gallons:gal,ppg:cNum(get(row,'ppg')),total,odo:cNum(get(row,'odo')),miles:'',mpg:'',notes:(get(row,'notes')||'')+'[imported]'};
-    } else {
-      const cat=get(row,'category').toLowerCase();
-      const isW=cat.includes('wash')||cat.includes('clean');
-      if(isW)return{id:uid(),type:'wash',vid,ts:new Date().toISOString(),date,washType:cat||'Car Wash',loc:get(row,'shop')||'Fuelio',cost:cNum(get(row,'total')),notes:(get(row,'notes')||'')+'[imported]'};
-      return{id:uid(),type:'svc',vid,ts:new Date().toISOString(),date,svcType:cat||'Service',shop:get(row,'shop')||'Fuelio',cost:cNum(get(row,'total')),odo:cNum(get(row,'odo')),nextDue:'',notes:(get(row,'notes')||'')+'[imported]'};
+  const lines=text.split(/\r?\n/);
+  // Split into sections by ## markers
+  const sections={};
+  let cur=null;
+  for(const line of lines){
+    const clean=line.replace(/^"+|"+$/g,'').trim();
+    if(clean.startsWith('##')){cur=clean.replace(/^##\s*/,'').trim();sections[cur]=[];continue;}
+    if(cur&&line.trim()) sections[cur].push(parseLine(line));
+  }
+
+  // ── ## Log → fuel fill-ups ──────────────────────────────────
+  // Columns: Date, Odo (mi), Fuel (gal), Full, Price, mpg, latitude, longitude, City, Notes, ...
+  const fuelEntries=[];
+  const logRows=sections['Log']||[];
+  if(logRows.length>=2){
+    const h=logRows[0].map(c=>c.toLowerCase().replace(/\s|\(|\)/g,''));
+    // find columns by name
+    const ci=(names)=>{for(const n of names){const i=h.findIndex(c=>c.includes(n));if(i>=0)return i;}return -1;};
+    const iDate=ci(['date']);
+    const iOdo =ci(['odomi','odo']);
+    const iGal =ci(['fuelgal','fuel']);
+    const iPrice=ci(['price']);
+    const iMpg =ci(['mpg']);
+    const iCity=ci(['city']);
+    const iNotes=ci(['notes']);
+    const iVolPr=ci(['volumeprice']);
+
+    for(const row of logRows.slice(1)){
+      if(!row[0]) continue;
+      const date=pDate(row[iDate]||'');if(!date)continue;
+      const odo  =cNum(iOdo>=0?row[iOdo]:'');
+      const gal  =cNum(iGal>=0?row[iGal]:'');
+      const total=cNum(iPrice>=0?row[iPrice]:'');
+      const mpg  =cNum(iMpg>=0?row[iMpg]:'');
+      const ppg  =cNum(iVolPr>=0?row[iVolPr]:'');
+      const city =(iCity>=0?row[iCity]||'':'').trim();
+      const notes=(iNotes>=0?row[iNotes]||'':'').trim();
+      fuelEntries.push({id:uid(),type:'fuel',vid,ts:new Date().toISOString(),
+        date,station:city||'Fuelio Import',gallons:gal,ppg,total,odo,miles:'',mpg,
+        notes:(notes?notes+' ':'')+'[Fuelio]'});
     }
-  }).filter(Boolean);
+  }
+
+  // ── ## CostCategories → id→name map ─────────────────────────
+  const catMap={};
+  const catRows=sections['CostCategories']||[];
+  if(catRows.length>=2){
+    const h=catRows[0].map(c=>c.toLowerCase().replace(/[^a-z0-9]/g,''));
+    const iId=h.findIndex(c=>c.includes('id'));
+    const iNm=h.findIndex(c=>c==='name');
+    for(const row of catRows.slice(1)){if(row[iId]&&row[iNm])catMap[row[iId].trim()]=row[iNm].trim();}
+  }
+
+  // ── ## Costs → service / wash entries ───────────────────────
+  // Columns: CostTitle, Date, Odo, CostTypeID, Notes, Cost, ...
+  const costEntries=[];
+  const costRows=sections['Costs']||[];
+  if(costRows.length>=2){
+    const h=costRows[0].map(c=>c.toLowerCase().replace(/[^a-z0-9]/g,''));
+    const ci=(names)=>{for(const n of names){const i=h.findIndex(c=>c.includes(n));if(i>=0)return i;}return -1;};
+    const iTitle=ci(['costtitle','title']);
+    const iDate =ci(['date']);
+    const iOdo  =ci(['odo']);
+    const iCatId=ci(['costtypeid','categoryid','typeid']);
+    const iNotes=ci(['notes']);
+    const iCost =ci(['cost']);
+
+    for(const row of costRows.slice(1)){
+      if(!row[0]&&!row[iDate]) continue;
+      const date=pDate(iDate>=0?row[iDate]||'':'');if(!date)continue;
+      const catId  =(iCatId>=0?row[iCatId]||'':'').trim();
+      const catName=catMap[catId]||'Service';
+      const title  =(iTitle>=0?row[iTitle]||'':'').trim();
+      const cost   =cNum(iCost>=0?row[iCost]||'':'');
+      const odo    =cNum(iOdo>=0?row[iOdo]||'':'');
+      const notes  =(iNotes>=0?row[iNotes]||'':'').trim();
+      const label  =title||catName;
+      const isWash =catName.toLowerCase().includes('wash');
+      if(isWash){
+        costEntries.push({id:uid(),type:'wash',vid,ts:new Date().toISOString(),
+          date,washType:label,loc:'Fuelio Import',cost,
+          notes:(notes?notes+' ':'')+'[Fuelio]'});
+      } else {
+        costEntries.push({id:uid(),type:'svc',vid,ts:new Date().toISOString(),
+          date,svcType:label,shop:'Fuelio Import',cost,odo,nextDue:'',
+          notes:(notes?notes+' ':'')+'[Fuelio]'});
+      }
+    }
+  }
+
+  impData=[...fuelEntries,...costEntries];
+  if(!impData.length){toast('⚠️ No valid records found');return;}
+  const dates=impData.map(e=>e.date).sort();
+  const summary=[fuelEntries.length?`⛽ ${fuelEntries.length} fill-ups`:'',costEntries.length?`🔧 ${costEntries.length} costs`:''].filter(Boolean).join(' + ');
+  document.getElementById('ip-f').textContent=filename;
+  document.getElementById('ip-t').textContent=summary;
+  document.getElementById('ip-c').textContent=impData.length+' total records';
+  document.getElementById('ip-r').textContent=(dates[0]||'?')+' → '+(dates[dates.length-1]||'?');
+  document.getElementById('impPrev').style.display='block';
+  document.getElementById('pbar').style.display='none';
+  document.getElementById('pfill').style.width='0%';
 }
 function pDate(raw){
   if(!raw)return'';
