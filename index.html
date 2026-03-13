@@ -943,6 +943,7 @@ function renderHist(){
   const list=document.getElementById('histList');
   if(!list)return;
   if(!ents.length){list.innerHTML='<div class="empty"><div class="ei2">📭</div><p>No entries yet.</p></div>';return;}
+  ents.sort((a,b)=>new Date(b.date)-new Date(a.date));
   list.innerHTML=ents.slice(0,80).map(e=>{
     const{icon,label,amount,cls}=eDisp(e);
     let bot='';
