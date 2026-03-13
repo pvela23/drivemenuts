@@ -545,7 +545,12 @@ function sv(){localStorage.setItem('drivemenuts',JSON.stringify(S));}
 function g(id){return document.getElementById(id)?.value?.trim()||'';}
 function clr(ids){ids.forEach(id=>{const e=document.getElementById(id);if(e&&!e.readOnly)e.value='';});}
 function fmt$(n,dec=0){return '$'+parseFloat(n||0).toFixed(dec);}
-function fD(d){return d?d.slice(5).replace('-','/'):''}
+function fD(d){
+  if(!d)return'';
+  const [y,mo,day]=d.split('-');
+  const months=['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+  return months[parseInt(mo)-1]+' '+parseInt(day)+', '+y;
+}
 function actV(){return S.vehicles.find(v=>v.id===S.activeVehicle)||S.vehicles[0];}
 function toast(m,d=2600){const t=document.getElementById('toast');t.textContent=m;t.classList.add('show');setTimeout(()=>t.classList.remove('show'),d);}
 function setDates(){const t=new Date().toISOString().slice(0,10);['f-date','w-date','s-date'].forEach(id=>{const e=document.getElementById(id);if(e)e.value=t;});}
