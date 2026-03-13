@@ -545,12 +545,7 @@ function sv(){localStorage.setItem('drivemenuts',JSON.stringify(S));}
 function g(id){return document.getElementById(id)?.value?.trim()||'';}
 function clr(ids){ids.forEach(id=>{const e=document.getElementById(id);if(e&&!e.readOnly)e.value='';});}
 function fmt$(n,dec=0){return '$'+parseFloat(n||0).toFixed(dec);}
-function fD(d){
-  if(!d)return'';
-  const [y,mo,day]=d.split('-');
-  const months=['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
-  return months[parseInt(mo)-1]+' '+parseInt(day)+', '+y;
-}
+function fD(d){return d?d.slice(5).replace('-','/'):''}
 function actV(){return S.vehicles.find(v=>v.id===S.activeVehicle)||S.vehicles[0];}
 function toast(m,d=2600){const t=document.getElementById('toast');t.textContent=m;t.classList.add('show');setTimeout(()=>t.classList.remove('show'),d);}
 function setDates(){const t=new Date().toISOString().slice(0,10);['f-date','w-date','s-date'].forEach(id=>{const e=document.getElementById(id);if(e)e.value=t;});}
@@ -943,7 +938,6 @@ function renderHist(){
   const list=document.getElementById('histList');
   if(!list)return;
   if(!ents.length){list.innerHTML='<div class="empty"><div class="ei2">📭</div><p>No entries yet.</p></div>';return;}
-  ents.sort((a,b)=>new Date(b.date)-new Date(a.date));
   list.innerHTML=ents.slice(0,80).map(e=>{
     const{icon,label,amount,cls}=eDisp(e);
     let bot='';
@@ -1072,7 +1066,8 @@ async function syncE(entry,b,m){
   const v=S.vehicles.find(v=>v.id===entry.vid);
   const vn=v?`${v.name}${v.year?' ('+v.year+')':''}`:'Unknown';
   try{
-    await fetch(S.sheetsUrl,{method:'POST',mode:'no-cors',headers:{'Content-Type':'application/json'},body:JSON.stringify({sheet:shN(entry.type),row:bRow(entry,vn)})});
+    const payload=JSON.stringify({sheet:shN(entry.type),row:bRow(entry,vn)});
+    await fetch(S.sheetsUrl,{method:'POST',headers:{'Content-Type':'text/plain;charset=utf-8'},body:payload});
     setSS(b,m,'ok','✓ Synced to Google Sheets');
     setTimeout(()=>setSS(b,m,'idle','Ready to sync'),3000);
   }catch(e){setSS(b,m,'err','✗ Sync failed — will retry');S.pending.push({entry,b,m});sv();}
@@ -1083,7 +1078,7 @@ async function syncBatch(entries){
   for(const e of entries){
     const v=S.vehicles.find(v=>v.id===e.vid);
     const vn=v?`${v.name}${v.year?' ('+v.year+')':''}`:'Unknown';
-    try{await fetch(S.sheetsUrl,{method:'POST',mode:'no-cors',headers:{'Content-Type':'application/json'},body:JSON.stringify({sheet:shN(e.type),row:bRow(e,vn)})});ok++;}catch{fail++;}
+    try{const p=JSON.stringify({sheet:shN(e.type),row:bRow(e,vn)});await fetch(S.sheetsUrl,{method:'POST',headers:{'Content-Type':'text/plain;charset=utf-8'},body:p});ok++;}catch{fail++;}
     await new Promise(r=>setTimeout(r,100));
   }
   return{ok,fail};
