@@ -214,6 +214,16 @@ canvas.mpg-chart{width:100%!important;height:160px!important}
 .bdanger:active{background:rgba(176,82,72,.1)}
 .div{height:1px;background:var(--bdr);margin:14px 0}
 
+/* PARTIAL FILL TOGGLE */
+.tgl-wrap{display:flex;align-items:center;justify-content:space-between;padding:11px 13px;background:var(--sur);border:1px solid var(--bdr);border-radius:10px}
+.tgl-lbl{font-size:11px;color:var(--mut);text-transform:uppercase;letter-spacing:.7px}
+.tgl{position:relative;width:40px;height:24px;flex-shrink:0}
+.tgl input{opacity:0;width:0;height:0;position:absolute}
+.tgl-track{position:absolute;inset:0;border-radius:12px;background:var(--bdr);transition:.25s;cursor:pointer}
+.tgl-track::after{content:'';position:absolute;width:18px;height:18px;border-radius:50%;background:#fff;top:3px;left:3px;transition:.25s;box-shadow:0 1px 3px rgba(0,0,0,.2)}
+.tgl input:checked~.tgl-track{background:var(--fuel)}
+.tgl input:checked~.tgl-track::after{left:19px}
+
 /* TOAST */
 .toast{position:fixed;top:calc(var(--st) + 68px);left:50%;transform:translateX(-50%) translateY(-16px);background:var(--card);border:1px solid var(--bdr);border-radius:100px;padding:10px 20px;font-size:12px;z-index:300;opacity:0;transition:.3s;white-space:nowrap;pointer-events:none}
 .toast.show{opacity:1;transform:translateX(-50%) translateY(0)}
@@ -338,21 +348,21 @@ canvas.mpg-chart{width:100%!important;height:160px!important}
         <div class="fg">
           <div class="fr">
             <div class="f"><label>Date</label><input type="date" id="f-date"></div>
-            <div class="f"><label>Station</label><input type="text" id="f-station" placeholder="Shell, Chevron…" autocomplete="off" autocorrect="off" autocapitalize="words" spellcheck="false" enterkeyhint="next"></div>
+            <div class="f"><label>Odometer (mi)</label><input type="number" id="f-odo" placeholder="current reading" inputmode="numeric" enterkeyhint="next" oninput="onOI()"></div>
           </div>
           <div class="fr">
             <div class="f"><label>Gallons</label><input type="number" id="f-gal" placeholder="0.000" step="0.001" inputmode="decimal" enterkeyhint="next" oninput="onFI()"></div>
             <div class="f"><label>Price / Gal ($)</label><input type="number" id="f-ppg" placeholder="0.000" step="0.001" inputmode="decimal" enterkeyhint="next" oninput="onFI()"></div>
           </div>
-          <div class="fr">
-            <div class="f"><label>Total Cost ($)</label><input type="number" id="f-total" placeholder="auto-calc" step="0.01" inputmode="decimal" enterkeyhint="next"></div>
-            <div class="f"><label>Odometer (mi)</label><input type="number" id="f-odo" placeholder="current reading" inputmode="numeric" enterkeyhint="next" oninput="onOI()"></div>
-          </div>
+          <div class="f"><label>Total Cost ($)</label><input type="number" id="f-total" placeholder="auto-calc" step="0.01" inputmode="decimal" enterkeyhint="next"></div>
           <div class="fr">
             <div class="f"><label>Miles Since Last Fill</label><input type="number" id="f-miles" placeholder="auto" readonly></div>
             <div class="f"><label>MPG (this fill)</label><input type="number" id="f-mpg" placeholder="auto" readonly></div>
           </div>
-          <div class="f"><label>Notes</label><input type="text" id="f-notes" placeholder="Partial fill, premium, top-off…" autocomplete="off" autocorrect="off" autocapitalize="sentences" spellcheck="false" enterkeyhint="done"></div>
+          <div class="tgl-wrap">
+            <span class="tgl-lbl">Partial fill (skip MPG)</span>
+            <label class="tgl"><input type="checkbox" id="f-partial" onchange="onPartialChange()"><span class="tgl-track"></span></label>
+          </div>
         </div>
         <button class="bsub b-fuel" onclick="saveFuel()">💾 Save Fill-Up</button>
         <div class="sync idle" id="sy-fuel"><div class="sdot"></div><span id="syt-fuel">Ready to sync</span></div>
@@ -623,27 +633,36 @@ function onOI(){
   const gal=parseFloat(document.getElementById('f-gal')?.value);
   const mEl=document.getElementById('f-miles');
   const mpgEl=document.getElementById('f-mpg');
+  const isPartial=document.getElementById('f-partial')?.checked;
   if(!mEl||!mpgEl)return;
   const last=lastFuel();
   if(last&&last.odo&&odo>parseFloat(last.odo)){
     const mi=odo-parseFloat(last.odo);
     mEl.value=mi.toFixed(1);
-    mpgEl.value=gal>0?(mi/gal).toFixed(1):'';
+    mpgEl.value=(!isPartial&&gal>0)?(mi/gal).toFixed(1):'';
   } else {mEl.value='';mpgEl.value='';}
+}
+function onPartialChange(){
+  const mpgEl=document.getElementById('f-mpg');
+  if(mpgEl)mpgEl.value='';
+  onOI();
 }
 
 // ── SAVE ──────────────────────────────────────────────────────────
 function saveFuel(){
+  const isPartial=document.getElementById('f-partial')?.checked||false;
   const e={id:uid(),type:'fuel',vid:S.activeVehicle,ts:new Date().toISOString(),
-    date:g('f-date'),station:g('f-station'),gallons:g('f-gal'),ppg:g('f-ppg'),
-    total:g('f-total'),odo:g('f-odo'),miles:g('f-miles'),mpg:g('f-mpg'),notes:g('f-notes')};
+    date:g('f-date'),gallons:g('f-gal'),ppg:g('f-ppg'),
+    total:g('f-total'),odo:g('f-odo'),miles:g('f-miles'),
+    mpg:isPartial?'':g('f-mpg'),partial:isPartial||undefined};
   if(!e.date){toast('⚠️ Date required');return;}
   const totalNum=parseFloat(e.total);
   if(!e.total||isNaN(totalNum)||totalNum<=0){toast('⚠️ Enter a valid total cost');return;}
   if(e.gallons&&(isNaN(parseFloat(e.gallons))||parseFloat(e.gallons)<0)){toast('⚠️ Gallons must be a positive number');return;}
   if(e.ppg&&(isNaN(parseFloat(e.ppg))||parseFloat(e.ppg)<0)){toast('⚠️ Price/gal must be a positive number');return;}
-  addE(e);clr(['f-station','f-gal','f-ppg','f-total','f-odo','f-notes']);
+  addE(e);clr(['f-gal','f-ppg','f-total','f-odo']);
   document.getElementById('f-miles').value='';document.getElementById('f-mpg').value='';
+  const pt=document.getElementById('f-partial');if(pt)pt.checked=false;
   renderHint();toast('⛽ Fill-up saved!');syncE(e,'sy-fuel','syt-fuel');
 }
 function saveWash(){
@@ -950,7 +969,7 @@ function renderHist(){
     if(e.type==='fuel'&&(e.miles||e.mpg||e.gallons)){
       bot=`<div class="ec-bot">
         ${e.miles?`<div><div class="ecb-v" style="color:var(--fuel)">${parseFloat(e.miles).toFixed(0)} mi</div><div class="ecb-l">Miles</div></div>`:''}
-        <div><div class="ecb-v" style="color:var(--wash)">${e.mpg?parseFloat(e.mpg).toFixed(1):'—'}</div><div class="ecb-l">MPG</div></div>
+        <div><div class="ecb-v" style="color:var(--wash)">${e.partial?'<span style="font-size:10px;background:rgba(140,136,128,.15);padding:2px 7px;border-radius:100px;color:var(--mut)">partial</span>':e.mpg?parseFloat(e.mpg).toFixed(1):'—'}</div><div class="ecb-l">MPG</div></div>
         <div><div class="ecb-v" style="color:var(--fuel)">${e.gallons?parseFloat(e.gallons).toFixed(2)+' gal':'—'}</div><div class="ecb-l">Gallons</div></div>
       </div>`;
     }
@@ -1049,9 +1068,9 @@ function doPost(e) {
 
 function getHeaders(sheet) {
   var h = {
-    Fuel:    ['Timestamp','Vehicle','Date','Station','Gallons',
+    Fuel:    ['Timestamp','Vehicle','Date','Gallons',
               'Price/Gal','Total Cost','Odometer',
-              'Miles Since Last Fill','MPG','Notes'],
+              'Miles Since Last Fill','MPG','Partial'],
     CarWash: ['Timestamp','Vehicle','Date','Wash Type',
               'Location','Cost','Notes'],
     Service: ['Timestamp','Vehicle','Date','Service Type',
@@ -1102,7 +1121,7 @@ async function retryQ(){
 function shN(t){return{fuel:'Fuel',wash:'CarWash',svc:'Service'}[t]||'Misc';}
 function bRow(e,vn){
   const base=[new Date().toISOString(),vn,e.date];
-  if(e.type==='fuel')return[...base,e.station,e.gallons,e.ppg,e.total,e.odo,e.miles,e.mpg,e.notes];
+  if(e.type==='fuel')return[...base,e.gallons,e.ppg,e.total,e.odo,e.miles,e.mpg,e.partial?'Yes':''];
   if(e.type==='wash')return[...base,e.washType,e.loc,e.cost,e.notes];
   if(e.type==='svc') return[...base,e.svcType,e.shop,e.cost,e.odo,e.nextDue,e.notes];
   return base;
