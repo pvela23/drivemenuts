@@ -947,9 +947,9 @@ function renderHist(){
   list.innerHTML=ents.slice(0,80).map(e=>{
     const{icon,label,amount,cls}=eDisp(e);
     let bot='';
-    if(e.type==='fuel'&&(e.miles||e.mpg)){
+    if(e.type==='fuel'&&(e.miles||e.mpg||e.gallons)){
       bot=`<div class="ec-bot">
-        <div><div class="ecb-v" style="color:var(--fuel)">${e.miles?parseFloat(e.miles).toFixed(0)+' mi':'—'}</div><div class="ecb-l">Miles</div></div>
+        ${e.miles?`<div><div class="ecb-v" style="color:var(--fuel)">${parseFloat(e.miles).toFixed(0)} mi</div><div class="ecb-l">Miles</div></div>`:''}
         <div><div class="ecb-v" style="color:#aed6f1">${e.mpg?parseFloat(e.mpg).toFixed(1):'—'}</div><div class="ecb-l">MPG</div></div>
         <div><div class="ecb-v" style="color:var(--fuel)">${e.gallons?parseFloat(e.gallons).toFixed(2)+' gal':'—'}</div><div class="ecb-l">Gallons</div></div>
       </div>`;
@@ -1267,14 +1267,19 @@ async function doImport(){
     if(mi>0&&mi<2000){all[i].miles=mi.toFixed(1);if(all[i].gallons&&parseFloat(all[i].gallons)>0)all[i].mpg=(mi/parseFloat(all[i].gallons)).toFixed(1);}
   }
 
+  let imported=0;
   for(let i=0;i<impData.length;i++){
-    S.entries.push(impData[i]);
+    const e=impData[i];
+    const dup=S.entries.some(x=>x.vid===e.vid&&x.type===e.type&&x.date===e.date&&x.odo===e.odo&&x.total===e.total&&x.cost===e.cost);
+    if(!dup){S.entries.push(e);imported++;}
     fill.style.width=Math.round((i+1)/impData.length*60)+'%';
     if(i%20===0)await new Promise(r=>setTimeout(r,10));
   }
   sv();renderStats();fill.style.width='60%';
-  if(S.sheetsUrl){btn.textContent='Syncing to Sheets…';const res=await syncBatch(impData);fill.style.width='100%';toast(`✓ Imported ${impData.length} records · ${res.ok} synced`,4000);}
-  else{fill.style.width='100%';toast(`✓ Imported ${impData.length} records`,3000);}
+  const skipped=impData.length-imported;
+  const skipMsg=skipped?` · ${skipped} duplicates skipped`:'';
+  if(S.sheetsUrl){btn.textContent='Syncing to Sheets…';const res=await syncBatch(impData);fill.style.width='100%';toast(`✓ Imported ${imported} records${skipMsg} · ${res.ok} synced`,4000);}
+  else{fill.style.width='100%';toast(`✓ Imported ${imported} records${skipMsg}`,3000);}
   impData=[];btn.disabled=false;btn.textContent='⬆️ Import All Records';
   document.getElementById('impPrev').style.display='none';
   renderHist();renderHint();checkAlertDot();
