@@ -64,8 +64,9 @@ body::before{content:'';position:fixed;inset:0;background-image:linear-gradient(
 .fg{display:grid;gap:11px}
 .fr{display:grid;grid-template-columns:1fr 1fr;gap:11px}
 .f label{display:block;font-size:10px;text-transform:uppercase;letter-spacing:.7px;color:var(--mut);margin-bottom:5px}
-.f input,.f select,.f textarea{width:100%;background:var(--sur);border:1px solid var(--bdr);border-radius:10px;padding:11px 13px;color:var(--txt);font-family:'DM Mono',monospace;font-size:14px;outline:none;transition:border-color .2s;-webkit-appearance:none;appearance:none}
-.f input:focus,.f select:focus{border-color:var(--fuel)}
+.f input,.f select,.f textarea{width:100%;background:var(--sur);border:1px solid var(--bdr);border-radius:10px;padding:11px 13px;color:var(--txt);font-family:'DM Mono',monospace;font-size:16px;outline:none;transition:border-color .2s;-webkit-appearance:none;appearance:none}
+.f input:focus,.f select:focus,.f textarea:focus{border-color:var(--fuel)}
+.f input:focus,.f select:focus,.f textarea:focus{scroll-margin-bottom:320px}
 .f select option{background:var(--card)}
 .f textarea{resize:none;height:64px}
 .f input[readonly]{background:rgba(245,166,35,.07);border-color:rgba(245,166,35,.25);color:var(--fuel);cursor:default}
@@ -192,7 +193,7 @@ canvas.mpg-chart{width:100%!important;height:160px!important}
 .avf.open{display:block}
 .av-row{display:grid;grid-template-columns:1fr 1fr;gap:9px;margin-bottom:9px}
 .avf label{display:block;font-size:10px;text-transform:uppercase;letter-spacing:.7px;color:var(--mut);margin-bottom:5px}
-.avf input{width:100%;background:var(--card);border:1px solid var(--bdr);border-radius:9px;padding:10px 12px;color:var(--txt);font-family:'DM Mono',monospace;font-size:13px;outline:none;-webkit-appearance:none}
+.avf input{width:100%;background:var(--card);border:1px solid var(--bdr);border-radius:9px;padding:10px 12px;color:var(--txt);font-family:'DM Mono',monospace;font-size:16px;outline:none;-webkit-appearance:none}
 .avf input:focus{border-color:var(--fuel)}
 .swatches{display:flex;gap:8px;flex-wrap:wrap;margin-top:2px}
 .sw{width:28px;height:28px;border-radius:50%;cursor:pointer;border:2px solid transparent;transition:.2s}
@@ -200,7 +201,7 @@ canvas.mpg-chart{width:100%!important;height:160px!important}
 .av-btns{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:12px}
 .av-save{background:var(--fuel);color:#1a0e00;border:none;border-radius:9px;padding:10px;font-family:'Syne',sans-serif;font-size:13px;font-weight:700;cursor:pointer}
 .av-cancel{background:transparent;color:var(--mut);border:1px solid var(--bdr);border-radius:9px;padding:10px;font-family:'DM Mono',monospace;font-size:13px;cursor:pointer}
-.url-inp{width:100%;background:var(--sur);border:1px solid var(--bdr);border-radius:10px;padding:11px 13px;color:var(--txt);font-family:'DM Mono',monospace;font-size:12px;outline:none;transition:border-color .2s;margin-bottom:8px}
+.url-inp{width:100%;background:var(--sur);border:1px solid var(--bdr);border-radius:10px;padding:11px 13px;color:var(--txt);font-family:'DM Mono',monospace;font-size:16px;outline:none;transition:border-color .2s;margin-bottom:8px}
 .url-inp:focus{border-color:var(--fuel)}
 .sh-hint{font-size:10px;color:var(--mut);line-height:1.7}.sh-hint a{color:var(--fuel);text-decoration:none}
 .scr-box{background:var(--sur);border:1px solid var(--bdr);border-radius:10px;padding:14px;margin-top:10px}
@@ -337,21 +338,21 @@ canvas.mpg-chart{width:100%!important;height:160px!important}
         <div class="fg">
           <div class="fr">
             <div class="f"><label>Date</label><input type="date" id="f-date"></div>
-            <div class="f"><label>Station</label><input type="text" id="f-station" placeholder="Shell, Chevron…"></div>
+            <div class="f"><label>Station</label><input type="text" id="f-station" placeholder="Shell, Chevron…" autocomplete="off" autocorrect="off" autocapitalize="words" spellcheck="false" enterkeyhint="next"></div>
           </div>
           <div class="fr">
-            <div class="f"><label>Gallons</label><input type="number" id="f-gal" placeholder="0.000" step="0.001" oninput="onFI()"></div>
-            <div class="f"><label>Price / Gal ($)</label><input type="number" id="f-ppg" placeholder="0.000" step="0.001" oninput="onFI()"></div>
+            <div class="f"><label>Gallons</label><input type="number" id="f-gal" placeholder="0.000" step="0.001" inputmode="decimal" enterkeyhint="next" oninput="onFI()"></div>
+            <div class="f"><label>Price / Gal ($)</label><input type="number" id="f-ppg" placeholder="0.000" step="0.001" inputmode="decimal" enterkeyhint="next" oninput="onFI()"></div>
           </div>
           <div class="fr">
-            <div class="f"><label>Total Cost ($)</label><input type="number" id="f-total" placeholder="auto-calc" step="0.01"></div>
-            <div class="f"><label>Odometer (mi)</label><input type="number" id="f-odo" placeholder="current reading" oninput="onOI()"></div>
+            <div class="f"><label>Total Cost ($)</label><input type="number" id="f-total" placeholder="auto-calc" step="0.01" inputmode="decimal" enterkeyhint="next"></div>
+            <div class="f"><label>Odometer (mi)</label><input type="number" id="f-odo" placeholder="current reading" inputmode="numeric" enterkeyhint="next" oninput="onOI()"></div>
           </div>
           <div class="fr">
             <div class="f"><label>Miles Since Last Fill</label><input type="number" id="f-miles" placeholder="auto" readonly></div>
             <div class="f"><label>MPG (this fill)</label><input type="number" id="f-mpg" placeholder="auto" readonly></div>
           </div>
-          <div class="f"><label>Notes</label><input type="text" id="f-notes" placeholder="Partial fill, premium, top-off…"></div>
+          <div class="f"><label>Notes</label><input type="text" id="f-notes" placeholder="Partial fill, premium, top-off…" autocomplete="off" autocorrect="off" autocapitalize="sentences" spellcheck="false" enterkeyhint="done"></div>
         </div>
         <button class="bsub b-fuel" onclick="saveFuel()">💾 Save Fill-Up</button>
         <div class="sync idle" id="sy-fuel"><div class="sdot"></div><span id="syt-fuel">Ready to sync</span></div>
@@ -370,10 +371,10 @@ canvas.mpg-chart{width:100%!important;height:160px!important}
             </div>
           </div>
           <div class="fr">
-            <div class="f"><label>Location</label><input type="text" id="w-loc" placeholder="Mister Car Wash…"></div>
-            <div class="f"><label>Cost ($)</label><input type="number" id="w-cost" placeholder="0.00" step="0.01"></div>
+            <div class="f"><label>Location</label><input type="text" id="w-loc" placeholder="Mister Car Wash…" autocomplete="off" autocorrect="off" autocapitalize="words" spellcheck="false" enterkeyhint="next"></div>
+            <div class="f"><label>Cost ($)</label><input type="number" id="w-cost" placeholder="0.00" step="0.01" inputmode="decimal" enterkeyhint="next"></div>
           </div>
-          <div class="f"><label>Notes</label><input type="text" id="w-notes" placeholder="Optional"></div>
+          <div class="f"><label>Notes</label><input type="text" id="w-notes" placeholder="Optional" autocomplete="off" autocorrect="off" autocapitalize="sentences" spellcheck="false" enterkeyhint="done"></div>
         </div>
         <button class="bsub b-wash" onclick="saveWash()">💾 Save Wash</button>
         <div class="sync idle" id="sy-wash"><div class="sdot"></div><span id="syt-wash">Ready to sync</span></div>
@@ -392,14 +393,14 @@ canvas.mpg-chart{width:100%!important;height:160px!important}
             </div>
           </div>
           <div class="fr">
-            <div class="f"><label>Shop</label><input type="text" id="s-shop" placeholder="Jiffy Lube…"></div>
-            <div class="f"><label>Cost ($)</label><input type="number" id="s-cost" placeholder="0.00" step="0.01"></div>
+            <div class="f"><label>Shop</label><input type="text" id="s-shop" placeholder="Jiffy Lube…" autocomplete="off" autocorrect="off" autocapitalize="words" spellcheck="false" enterkeyhint="next"></div>
+            <div class="f"><label>Cost ($)</label><input type="number" id="s-cost" placeholder="0.00" step="0.01" inputmode="decimal" enterkeyhint="next"></div>
           </div>
           <div class="fr">
-            <div class="f"><label>Odometer (mi)</label><input type="number" id="s-odo" placeholder="current reading"></div>
-            <div class="f"><label>Next Due (mi)</label><input type="number" id="s-next" placeholder="e.g. 35000"></div>
+            <div class="f"><label>Odometer (mi)</label><input type="number" id="s-odo" placeholder="current reading" inputmode="numeric" enterkeyhint="next"></div>
+            <div class="f"><label>Next Due (mi)</label><input type="number" id="s-next" placeholder="e.g. 35000" inputmode="numeric" enterkeyhint="next"></div>
           </div>
-          <div class="f"><label>Notes</label><textarea id="s-notes" placeholder="Parts replaced, warranty info…"></textarea></div>
+          <div class="f"><label>Notes</label><textarea id="s-notes" placeholder="Parts replaced, warranty info…" autocorrect="off" autocapitalize="sentences" spellcheck="false" enterkeyhint="done"></textarea></div>
         </div>
         <button class="bsub b-svc" onclick="saveSvc()">💾 Save Service</button>
         <div class="sync idle" id="sy-svc"><div class="sdot"></div><span id="syt-svc">Ready to sync</span></div>
@@ -548,6 +549,7 @@ function fD(d){return d?d.slice(5).replace('-','/'):''}
 function actV(){return S.vehicles.find(v=>v.id===S.activeVehicle)||S.vehicles[0];}
 function toast(m,d=2600){const t=document.getElementById('toast');t.textContent=m;t.classList.add('show');setTimeout(()=>t.classList.remove('show'),d);}
 function setDates(){const t=new Date().toISOString().slice(0,10);['f-date','w-date','s-date'].forEach(id=>{const e=document.getElementById(id);if(e)e.value=t;});}
+function esc(s){const d=document.createElement('div');d.textContent=String(s??'');return d.innerHTML;}
 
 // ── TAB SWITCH ────────────────────────────────────────────────────
 function sw(tab){
@@ -630,7 +632,11 @@ function saveFuel(){
   const e={id:uid(),type:'fuel',vid:S.activeVehicle,ts:new Date().toISOString(),
     date:g('f-date'),station:g('f-station'),gallons:g('f-gal'),ppg:g('f-ppg'),
     total:g('f-total'),odo:g('f-odo'),miles:g('f-miles'),mpg:g('f-mpg'),notes:g('f-notes')};
-  if(!e.date||!e.total){toast('⚠️ Date and Total Cost required');return;}
+  if(!e.date){toast('⚠️ Date required');return;}
+  const totalNum=parseFloat(e.total);
+  if(!e.total||isNaN(totalNum)||totalNum<=0){toast('⚠️ Enter a valid total cost');return;}
+  if(e.gallons&&(isNaN(parseFloat(e.gallons))||parseFloat(e.gallons)<0)){toast('⚠️ Gallons must be a positive number');return;}
+  if(e.ppg&&(isNaN(parseFloat(e.ppg))||parseFloat(e.ppg)<0)){toast('⚠️ Price/gal must be a positive number');return;}
   addE(e);clr(['f-station','f-gal','f-ppg','f-total','f-odo','f-notes']);
   document.getElementById('f-miles').value='';document.getElementById('f-mpg').value='';
   renderHint();toast('⛽ Fill-up saved!');syncE(e,'sy-fuel','syt-fuel');
@@ -638,14 +644,19 @@ function saveFuel(){
 function saveWash(){
   const e={id:uid(),type:'wash',vid:S.activeVehicle,ts:new Date().toISOString(),
     date:g('w-date'),washType:g('w-type'),loc:g('w-loc'),cost:g('w-cost'),notes:g('w-notes')};
-  if(!e.date||!e.cost){toast('⚠️ Date and Cost required');return;}
+  if(!e.date){toast('⚠️ Date required');return;}
+  const washCost=parseFloat(e.cost);
+  if(!e.cost||isNaN(washCost)||washCost<0){toast('⚠️ Enter a valid cost');return;}
   addE(e);clr(['w-loc','w-cost','w-notes']);toast('🫧 Wash saved!');syncE(e,'sy-wash','syt-wash');
 }
 function saveSvc(){
   const e={id:uid(),type:'svc',vid:S.activeVehicle,ts:new Date().toISOString(),
     date:g('s-date'),svcType:g('s-type'),shop:g('s-shop'),cost:g('s-cost'),
     odo:g('s-odo'),nextDue:g('s-next'),notes:g('s-notes')};
-  if(!e.date||!e.cost){toast('⚠️ Date and Cost required');return;}
+  if(!e.date){toast('⚠️ Date required');return;}
+  const svcCost=parseFloat(e.cost);
+  if(!e.cost||isNaN(svcCost)||svcCost<0){toast('⚠️ Enter a valid cost');return;}
+  if(e.nextDue&&(isNaN(parseFloat(e.nextDue))||parseFloat(e.nextDue)<0)){toast('⚠️ Next Due Miles must be a positive number');return;}
   addE(e);clr(['s-shop','s-cost','s-odo','s-next','s-notes']);
   toast('🔧 Service saved!');syncE(e,'sy-svc','syt-svc');
   checkAlertDot();
@@ -878,8 +889,8 @@ function renderAlerts(){
     return`<div class="alert-item">
       <div class="alert-item-icon">${svcIcon(r.svcType)}</div>
       <div class="alert-item-body">
-        <div class="alert-item-title">${r.svcType}</div>
-        <div class="alert-item-sub">${r.shop?'@ '+r.shop+' · ':''} Last: ${fD(r.date)}<br>${subLine}</div>
+        <div class="alert-item-title">${esc(r.svcType)}</div>
+        <div class="alert-item-sub">${r.shop?'@ '+esc(r.shop)+' · ':''} Last: ${fD(r.date)}<br>${subLine}</div>
       </div>
       ${badge}
     </div>`;
@@ -893,7 +904,7 @@ function remCard(r){
     :`Due at ${r.nextDue.toLocaleString()} mi`;
   return`<div class="rem-card ${r.status}">
     <div class="rem-icon">${svcIcon(r.svcType)}</div>
-    <div class="rem-info"><div class="rem-title">${r.svcType}</div><div class="rem-sub">${sub}</div></div>
+    <div class="rem-info"><div class="rem-title">${esc(r.svcType)}</div><div class="rem-sub">${sub}</div></div>
     ${badge}
   </div>`;
 }
@@ -939,9 +950,9 @@ function renderHist(){
     }
     return`<div class="ec"><div class="ec-top">
       <div class="ei ${cls}">${icon}</div>
-      <div><div class="et">${label}</div><div class="es">${fD(e.date)}${e.odo?' · '+parseFloat(e.odo).toLocaleString()+' mi':''}</div></div>
+      <div><div class="et">${esc(label)}</div><div class="es">${fD(e.date)}${e.odo?' · '+parseFloat(e.odo).toLocaleString()+' mi':''}</div></div>
       <div class="ea ${cls}">${amount}</div>
-    </div>${bot}<button class="del-btn" onclick="delE('${e.id}')">✕</button></div>`;
+    </div>${bot}<button class="del-btn" onclick="delE('${e.id}')" aria-label="Delete entry">✕</button></div>`;
   }).join('');
 }
 function eDisp(e){
@@ -961,9 +972,9 @@ function renderVList(){
   const el=document.getElementById('vList');if(!el)return;
   el.innerHTML=S.vehicles.map(v=>`<div class="vi ${v.id===S.activeVehicle?'sel':''}" onclick="selV('${v.id}')">
     <div class="vc-dot" style="background:${v.color}"></div>
-    <div class="vi-info"><div class="vi-name">${v.name}</div><div class="vi-sub">${[v.year,v.make,v.model].filter(Boolean).join(' ')||'No details'}</div></div>
+    <div class="vi-info"><div class="vi-name">${esc(v.name)}</div><div class="vi-sub">${esc([v.year,v.make,v.model].filter(Boolean).join(' '))||'No details'}</div></div>
     ${v.id===S.activeVehicle?'<span class="vi-check">✓</span>':''}
-    ${S.vehicles.length>1?`<button class="btn-delv" onclick="event.stopPropagation();delV('${v.id}')">✕</button>`:''}
+    ${S.vehicles.length>1?`<button class="btn-delv" onclick="event.stopPropagation();delV('${v.id}')" aria-label="Delete vehicle">✕</button>`:''}
   </div>`).join('');
 }
 function selV(id){S.activeVehicle=id;sv();renderHdr();renderStats();renderHint();renderVList();toast('🚗 Switched to '+actV().name);}
@@ -992,7 +1003,9 @@ function openSett(){document.getElementById('sOv').classList.add('open');renderV
 function closeSett(){document.getElementById('sOv').classList.remove('open');}
 function closeSOut(e){if(e.target===document.getElementById('sOv'))closeSett();}
 function saveSett(){
-  S.sheetsUrl=document.getElementById('shUrl')?.value?.trim()||'';
+  const url=document.getElementById('shUrl')?.value?.trim()||'';
+  if(url&&!url.startsWith('https://')){toast('⚠️ Sheets URL must start with https://');return;}
+  S.sheetsUrl=url;
   sv();closeSett();toast('✓ Settings saved!');retryQ();
 }
 function clearAll(){
@@ -1089,7 +1102,11 @@ function onDrop(e){e.preventDefault();document.getElementById('dz').classList.re
 function onFile(e){const f=e.target.files?.[0];if(f)procCSV(f);e.target.value='';}
 
 function procCSV(file){
+  if(!file.name.toLowerCase().endsWith('.csv')&&file.type!=='text/csv'&&file.type!=='application/vnd.ms-excel'){
+    toast('⚠️ Please select a CSV file');return;
+  }
   const r=new FileReader();
+  r.onerror=function(){toast('⚠️ Could not read file');};
   r.onload=function(ev){
     const text=ev.target.result;
     if(text.includes('## Log')||text.includes('## Vehicle')){
@@ -1104,8 +1121,10 @@ function procCSV(file){
 function parseLine(line){
   const cells=[];let cur='',inQ=false;
   for(let i=0;i<line.length;i++){
-    if(line[i]==='"'){inQ=!inQ;}
-    else if(line[i]===','&&!inQ){cells.push(cur.trim());cur='';}
+    if(line[i]==='"'){
+      if(inQ&&line[i+1]==='"'){cur+='"';i++;}  // escaped quote ""
+      else{inQ=!inQ;}
+    } else if(line[i]===','&&!inQ){cells.push(cur.trim());cur='';}
     else{cur+=line[i];}
   }
   cells.push(cur.trim());
