@@ -1073,10 +1073,15 @@ async function syncE(entry,b,m){
   const vn=v?`${v.name}${v.year?' ('+v.year+')':''}`:'Unknown';
   try{
     const payload=JSON.stringify({sheet:shN(entry.type),row:bRow(entry,vn)});
-    await fetch(S.sheetsUrl,{method:'POST',headers:{'Content-Type':'text/plain;charset=utf-8'},body:payload});
+    await fetchWithTimeout(S.sheetsUrl,{method:'POST',headers:{'Content-Type':'text/plain;charset=utf-8'},body:payload});
     setSS(b,m,'ok','✓ Synced to Google Sheets');
     setTimeout(()=>setSS(b,m,'idle','Ready to sync'),3000);
   }catch(e){setSS(b,m,'err','✗ Sync failed — will retry');S.pending.push({entry,b,m});sv();}
+}
+async function fetchWithTimeout(url,opts,ms=8000){
+  const ctrl=new AbortController();
+  const id=setTimeout(()=>ctrl.abort(),ms);
+  try{return await fetch(url,{...opts,signal:ctrl.signal});}finally{clearTimeout(id);}
 }
 async function syncBatch(entries){
   if(!S.sheetsUrl)return{ok:0,fail:entries.length};
@@ -1084,7 +1089,7 @@ async function syncBatch(entries){
   for(const e of entries){
     const v=S.vehicles.find(v=>v.id===e.vid);
     const vn=v?`${v.name}${v.year?' ('+v.year+')':''}`:'Unknown';
-    try{const p=JSON.stringify({sheet:shN(e.type),row:bRow(e,vn)});await fetch(S.sheetsUrl,{method:'POST',headers:{'Content-Type':'text/plain;charset=utf-8'},body:p});ok++;}catch{fail++;}
+    try{const p=JSON.stringify({sheet:shN(e.type),row:bRow(e,vn)});await fetchWithTimeout(S.sheetsUrl,{method:'POST',headers:{'Content-Type':'text/plain;charset=utf-8'},body:p});ok++;}catch{fail++;}
     await new Promise(r=>setTimeout(r,100));
   }
   return{ok,fail};
@@ -1267,22 +1272,26 @@ async function doImport(){
     if(mi>0&&mi<2000){all[i].miles=mi.toFixed(1);if(all[i].gallons&&parseFloat(all[i].gallons)>0)all[i].mpg=(mi/parseFloat(all[i].gallons)).toFixed(1);}
   }
 
-  let imported=0;
+  let imported=0;const toSync=[];
   for(let i=0;i<impData.length;i++){
     const e=impData[i];
     const dup=S.entries.some(x=>x.vid===e.vid&&x.type===e.type&&x.date===e.date&&x.odo===e.odo&&x.total===e.total&&x.cost===e.cost);
-    if(!dup){S.entries.push(e);imported++;}
-    fill.style.width=Math.round((i+1)/impData.length*60)+'%';
+    if(!dup){S.entries.push(e);toSync.push(e);imported++;}
+    fill.style.width=Math.round((i+1)/impData.length*100)+'%';
     if(i%20===0)await new Promise(r=>setTimeout(r,10));
   }
-  sv();renderStats();fill.style.width='60%';
+  sv();renderStats();
   const skipped=impData.length-imported;
-  const skipMsg=skipped?` · ${skipped} duplicates skipped`:'';
-  if(S.sheetsUrl){btn.textContent='Syncing to Sheets…';const res=await syncBatch(impData);fill.style.width='100%';toast(`✓ Imported ${imported} records${skipMsg} · ${res.ok} synced`,4000);}
-  else{fill.style.width='100%';toast(`✓ Imported ${imported} records${skipMsg}`,3000);}
+  const skipMsg=skipped?` · ${skipped} dupes skipped`:'';
+  fill.style.width='100%';
+  toast(`✓ Imported ${imported} records${skipMsg}`,3000);
   impData=[];btn.disabled=false;btn.textContent='⬆️ Import All Records';
   document.getElementById('impPrev').style.display='none';
   renderHist();renderHint();checkAlertDot();
+  // Sync in background — does not block the UI
+  if(S.sheetsUrl&&toSync.length){
+    syncBatch(toSync).then(res=>toast(`☁️ ${res.ok} records synced to Sheets`,3000));
+  }
 }
 function cancelImp(){impData=[];document.getElementById('impPrev').style.display='none';document.getElementById('csvIn').value='';}
 
