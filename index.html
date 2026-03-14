@@ -324,6 +324,17 @@ canvas.mpg-chart{width:100%!important;height:160px!important}
         </div>
       </div>
 
+      <!-- Monthly Spend Chart -->
+      <div class="fc">
+        <div class="fct">💰 Monthly Fuel Spend</div>
+        <div id="spendChartArea">
+          <div class="chart-empty" id="spendChartEmpty">Log 2+ months of fill-ups to see spend trend</div>
+          <div class="chart-wrap" id="spendChartWrap" style="display:none">
+            <canvas id="spendCanvas"></canvas>
+          </div>
+        </div>
+      </div>
+
       <!-- Monthly Summary -->
       <div class="fc">
         <div class="fct">📅 Monthly Summary</div>
@@ -348,13 +359,13 @@ canvas.mpg-chart{width:100%!important;height:160px!important}
         <div class="fg">
           <div class="fr">
             <div class="f"><label>Date</label><input type="date" id="f-date"></div>
-            <div class="f"><label>Odometer (mi)</label><input type="number" id="f-odo" placeholder="current reading" inputmode="numeric" enterkeyhint="next" oninput="onOI()"></div>
+            <div class="f"><label>Odometer (mi)</label><input type="number" id="f-odo" placeholder="current reading" inputmode="numeric" enterkeyhint="next" oninput="onOI()"><div id="odo-warn" style="display:none;font-size:10px;color:var(--red);margin-top:4px">⚠️ Lower than last recorded odometer</div></div>
           </div>
           <div class="fr">
             <div class="f"><label>Gallons</label><input type="number" id="f-gal" placeholder="0.000" step="0.001" inputmode="decimal" enterkeyhint="next" oninput="onFI()"></div>
             <div class="f"><label>Price / Gal ($)</label><input type="number" id="f-ppg" placeholder="0.000" step="0.001" inputmode="decimal" enterkeyhint="next" oninput="onFI()"></div>
           </div>
-          <div class="f"><label>Total Cost ($)</label><input type="number" id="f-total" placeholder="auto-calc" step="0.01" inputmode="decimal" enterkeyhint="next"></div>
+          <div class="f"><label>Total Cost ($)</label><input type="number" id="f-total" placeholder="auto-calc" step="0.01" inputmode="decimal" enterkeyhint="next" oninput="onFI()"></div>
           <div class="fr">
             <div class="f"><label>Miles Since Last Fill</label><input type="number" id="f-miles" placeholder="auto" readonly></div>
             <div class="f"><label>MPG (this fill)</label><input type="number" id="f-mpg" placeholder="auto" readonly></div>
@@ -507,6 +518,7 @@ canvas.mpg-chart{width:100%!important;height:160px!important}
     <button class="bsave" onclick="saveSett()">Save Settings</button>
     <div class="div"></div>
     <div class="sh-sec">Data</div>
+    <button class="bsave" onclick="exportCSV()">📥 Export Data as CSV</button>
     <button class="bdanger" onclick="clearAll()">🗑️ Clear All Local Data</button>
   </div>
 </div>
@@ -623,9 +635,16 @@ function renderHint(){
 
 // ── AUTO CALC ─────────────────────────────────────────────────────
 function onFI(){
-  const gal=parseFloat(document.getElementById('f-gal')?.value);
-  const ppg=parseFloat(document.getElementById('f-ppg')?.value);
-  if(gal>0&&ppg>0)document.getElementById('f-total').value=(gal*ppg).toFixed(2);
+  const galEl=document.getElementById('f-gal');
+  const ppgEl=document.getElementById('f-ppg');
+  const totEl=document.getElementById('f-total');
+  const gal=parseFloat(galEl?.value);
+  const ppg=parseFloat(ppgEl?.value);
+  const tot=parseFloat(totEl?.value);
+  // fill the one field that's empty when the other two are known
+  if(gal>0&&ppg>0&&!(tot>0))totEl.value=(gal*ppg).toFixed(2);
+  else if(tot>0&&ppg>0&&!(gal>0))galEl.value=(tot/ppg).toFixed(3);
+  else if(tot>0&&gal>0&&!(ppg>0))ppgEl.value=(tot/gal).toFixed(3);
   onOI();
 }
 function onOI(){
@@ -633,14 +652,22 @@ function onOI(){
   const gal=parseFloat(document.getElementById('f-gal')?.value);
   const mEl=document.getElementById('f-miles');
   const mpgEl=document.getElementById('f-mpg');
+  const warnEl=document.getElementById('odo-warn');
   const isPartial=document.getElementById('f-partial')?.checked;
   if(!mEl||!mpgEl)return;
   const last=lastFuel();
-  if(last&&last.odo&&odo>parseFloat(last.odo)){
-    const mi=odo-parseFloat(last.odo);
-    mEl.value=mi.toFixed(1);
-    mpgEl.value=(!isPartial&&gal>0)?(mi/gal).toFixed(1):'';
-  } else {mEl.value='';mpgEl.value='';}
+  if(last&&last.odo&&odo>0){
+    const lastOdo=parseFloat(last.odo);
+    if(warnEl)warnEl.style.display=(odo<lastOdo)?'block':'none';
+    if(odo>lastOdo){
+      const mi=odo-lastOdo;
+      mEl.value=mi.toFixed(1);
+      mpgEl.value=(!isPartial&&gal>0)?(mi/gal).toFixed(1):'';
+    } else {mEl.value='';mpgEl.value='';}
+  } else {
+    if(warnEl)warnEl.style.display='none';
+    mEl.value='';mpgEl.value='';
+  }
 }
 function onPartialChange(){
   const mpgEl=document.getElementById('f-mpg');
@@ -708,6 +735,7 @@ function renderDash(){
   document.getElementById('k-fills-sub').textContent=fuels.length?`${tMi>0?Math.round(tMi).toLocaleString()+' mi total':''}`:'no fill-ups yet';
 
   renderMpgChart(fuels);
+  renderSpendChart(fuels,vid);
   renderMonthly(vid);
   renderDashReminders(vid);
 }
@@ -846,6 +874,85 @@ function renderMonthly(vid){
     </div>`;
   });
   el.innerHTML=html;
+}
+
+// ── SPEND CHART ───────────────────────────────────────────────────
+function renderSpendChart(fuels,vid){
+  const empty=document.getElementById('spendChartEmpty');
+  const wrap=document.getElementById('spendChartWrap');
+  if(!empty||!wrap)return;
+
+  // build monthly totals
+  const map={};
+  fuels.forEach(e=>{
+    const m=e.date?e.date.slice(0,7):null;
+    if(!m)return;
+    map[m]=(map[m]||0)+parseFloat(e.total||0);
+  });
+  const months=Object.keys(map).sort().slice(-6);
+  if(months.length<2){empty.style.display='block';wrap.style.display='none';return;}
+  empty.style.display='none';wrap.style.display='block';
+
+  const vals=months.map(m=>map[m]);
+  const maxV=Math.max(...vals)||1;
+  const labels=months.map(m=>{const[y,mo]=m.split('-');const n=['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];return n[parseInt(mo)-1]+' '+y.slice(2);});
+
+  const canvas=document.getElementById('spendCanvas');
+  if(!canvas)return;
+  const ctx=canvas.getContext('2d');
+  const dpr=window.devicePixelRatio||1;
+  const W=canvas.parentElement.clientWidth;
+  const H=160;
+  canvas.width=W*dpr;canvas.height=H*dpr;
+  canvas.style.width=W+'px';canvas.style.height=H+'px';
+  ctx.scale(dpr,dpr);
+  ctx.clearRect(0,0,W,H);
+
+  const pad={t:14,r:16,b:28,l:46};
+  const cW=W-pad.l-pad.r;
+  const cH=H-pad.t-pad.b;
+  const barW=Math.min(cW/months.length*0.55,32);
+  const gap=cW/months.length;
+
+  // grid lines + y labels
+  ctx.strokeStyle='rgba(44,40,36,.08)';ctx.lineWidth=1;
+  for(let i=0;i<=4;i++){
+    const y=pad.t+(cH/4)*i;
+    ctx.beginPath();ctx.moveTo(pad.l,y);ctx.lineTo(pad.l+cW,y);ctx.stroke();
+    const lv=(maxV*(1-i/4));
+    ctx.fillStyle='rgba(140,136,128,.9)';
+    ctx.font=`${9*dpr/dpr}px DM Mono,monospace`;
+    ctx.textAlign='right';
+    ctx.fillText('$'+lv.toFixed(0),pad.l-4,y+3);
+  }
+
+  // bars
+  vals.forEach((v,i)=>{
+    const x=pad.l+gap*i+gap/2-barW/2;
+    const bH=(v/maxV)*cH;
+    const y=pad.t+cH-bH;
+    const grad=ctx.createLinearGradient(0,y,0,y+bH);
+    grad.addColorStop(0,'rgba(184,115,51,.85)');
+    grad.addColorStop(1,'rgba(184,115,51,.35)');
+    ctx.fillStyle=grad;
+    ctx.beginPath();
+    ctx.roundRect(x,y,barW,bH,3);
+    ctx.fill();
+    // value label on top
+    ctx.fillStyle='rgba(140,136,128,.9)';
+    ctx.font=`${8*dpr/dpr}px DM Mono,monospace`;
+    ctx.textAlign='center';
+    ctx.fillText('$'+v.toFixed(0),x+barW/2,y-3);
+  });
+
+  // x labels
+  ctx.fillStyle='rgba(140,136,128,.9)';
+  ctx.font=`${9*dpr/dpr}px DM Mono,monospace`;
+  ctx.textAlign='center';
+  labels.forEach((l,i)=>{
+    const x=pad.l+gap*i+gap/2;
+    ctx.fillText(l,x,H-6);
+  });
 }
 
 // ── SERVICE REMINDERS ─────────────────────────────────────────────
@@ -1032,6 +1139,27 @@ function saveSett(){
   if(url&&!url.startsWith('https://')){toast('⚠️ Sheets URL must start with https://');return;}
   S.sheetsUrl=url;
   sv();closeSett();toast('✓ Settings saved!');retryQ();
+}
+function exportCSV(){
+  const vn=actV()?.name||'Vehicle';
+  const entries=S.entries.filter(e=>e.vid===S.activeVehicle)
+    .sort((a,b)=>new Date(b.date)-new Date(a.date));
+  if(!entries.length){toast('⚠️ No data to export');return;}
+  const esc=v=>'"'+(String(v??'')).replace(/"/g,'""')+'"';
+  const rows=[['Type','Vehicle','Date','Amount','Gallons','Price/Gal','Odometer','Miles','MPG','Partial','Wash Type','Service Type','Shop','Next Due Miles']];
+  entries.forEach(e=>{
+    if(e.type==='fuel') rows.push(['Fuel',vn,e.date,e.total,e.gallons,e.ppg,e.odo,e.miles,e.mpg,e.partial?'Yes':'','','','','']);
+    if(e.type==='wash') rows.push(['Wash',vn,e.date,e.cost,'','','','','','',e.washType,'','','']);
+    if(e.type==='svc')  rows.push(['Service',vn,e.date,e.cost,'','',e.odo,'','','','',e.svcType,e.shop,e.nextDue]);
+  });
+  const csv=rows.map(r=>r.map(esc).join(',')).join('\n');
+  const blob=new Blob([csv],{type:'text/csv'});
+  const a=document.createElement('a');
+  a.href=URL.createObjectURL(blob);
+  a.download=`drivemenuts_${vn.replace(/\s+/g,'_')}_${new Date().toISOString().slice(0,10)}.csv`;
+  a.click();
+  URL.revokeObjectURL(a.href);
+  toast('📥 CSV exported!');
 }
 function clearAll(){
   if(!confirm('Delete ALL local data? Cannot be undone.'))return;
