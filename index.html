@@ -516,6 +516,8 @@ canvas.mpg-chart{width:100%!important;height:160px!important}
       <button class="cp-btn" onclick="copySc()">📋 Copy Script</button>
     </div>
     <button class="bsave" onclick="saveSett()">Save Settings</button>
+    <button class="bsave" id="forceSyncBtn" onclick="forceSync()" style="background:var(--wash);margin-top:8px">☁️ Force Sync Now</button>
+    <div id="forceSyncStatus" style="font-size:11px;color:var(--mut);margin-top:6px;min-height:16px"></div>
     <div class="div"></div>
     <div class="sh-sec">Data</div>
     <button class="bsave" onclick="exportCSV()">📥 Export Data as CSV</button>
@@ -1254,6 +1256,20 @@ async function retryQ(){
   const p=[...S.pending];S.pending=[];sv();
   for(const item of p){await syncE(item.entry,item.b,item.m);await new Promise(r=>setTimeout(r,300));}
   _retrying=false;
+}
+async function forceSync(){
+  const btn=document.getElementById('forceSyncBtn');
+  const status=document.getElementById('forceSyncStatus');
+  if(!S.sheetsUrl){if(status)status.textContent='⚠️ No Sheets URL configured above';return;}
+  const n=S.pending.length;
+  if(!n){if(status)status.textContent='✓ Nothing pending — all entries are synced';return;}
+  if(btn)btn.disabled=true;
+  if(status)status.textContent=`Syncing ${n} pending item${n>1?'s':''}…`;
+  _retrying=false; // allow retryQ to run even if a previous run stalled
+  await retryQ();
+  const left=S.pending.length;
+  if(btn)btn.disabled=false;
+  if(status)status.textContent=left===0?`✓ All ${n} item${n>1?'s':''} synced!`:`⚠️ ${left} item${left>1?'s':''} still failed — check your Sheets URL`;
 }
 function shN(t){return{fuel:'Fuel',wash:'CarWash',svc:'Service'}[t]||'Misc';}
 function bRow(e,vn){
