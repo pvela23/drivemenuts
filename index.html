@@ -557,6 +557,8 @@ function init(){
   setDates();renderHdr();renderStats();renderHint();buildSw();buildScript();
   if(S.sheetsUrl)document.getElementById('shUrl').value=S.sheetsUrl;
   retryQ();
+  window.addEventListener('online',retryQ);
+  setInterval(retryQ,60000);
   // start on fuel tab by default
   sw('fuel');
 }
@@ -1227,7 +1229,7 @@ async function syncE(entry,b,m){
     await fetchWithTimeout(S.sheetsUrl,{method:'POST',headers:{'Content-Type':'text/plain;charset=utf-8'},body:payload});
     setSS(b,m,'ok','✓ Synced to Google Sheets');
     setTimeout(()=>setSS(b,m,'idle','Ready to sync'),3000);
-  }catch(e){setSS(b,m,'err','✗ Sync failed — will retry');S.pending.push({entry,b,m});sv();}
+  }catch(e){setSS(b,m,'err','✗ Sync failed — retrying when online');S.pending.push({entry,b,m});sv();}
 }
 async function fetchWithTimeout(url,opts,ms=8000){
   const ctrl=new AbortController();
@@ -1245,10 +1247,13 @@ async function syncBatch(entries){
   }
   return{ok,fail};
 }
+let _retrying=false;
 async function retryQ(){
-  if(!S.sheetsUrl||!S.pending.length)return;
+  if(_retrying||!S.sheetsUrl||!S.pending.length)return;
+  _retrying=true;
   const p=[...S.pending];S.pending=[];sv();
-  for(const item of p){await syncE(item.entry,item.b,item.m);await new Promise(r=>setTimeout(r,200));}
+  for(const item of p){await syncE(item.entry,item.b,item.m);await new Promise(r=>setTimeout(r,300));}
+  _retrying=false;
 }
 function shN(t){return{fuel:'Fuel',wash:'CarWash',svc:'Service'}[t]||'Misc';}
 function bRow(e,vn){
