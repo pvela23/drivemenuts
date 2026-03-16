@@ -362,10 +362,10 @@ canvas.mpg-chart{width:100%!important;height:160px!important}
             <div class="f"><label>Odometer (mi)</label><input type="number" id="f-odo" placeholder="current reading" inputmode="numeric" enterkeyhint="next" oninput="onOI()"><div id="odo-warn" style="display:none;font-size:10px;color:var(--red);margin-top:4px">⚠️ Lower than last recorded odometer</div></div>
           </div>
           <div class="fr">
-            <div class="f"><label>Gallons</label><input type="number" id="f-gal" placeholder="0.000" step="0.001" inputmode="decimal" enterkeyhint="next" oninput="onFI()"></div>
-            <div class="f"><label>Price / Gal ($)</label><input type="number" id="f-ppg" placeholder="0.000" step="0.001" inputmode="decimal" enterkeyhint="next" oninput="onFI()"></div>
+            <div class="f"><label>Gallons</label><input type="number" id="f-gal" placeholder="0.000" step="0.001" inputmode="decimal" enterkeyhint="next" oninput="onFI('gal')"></div>
+            <div class="f"><label>Price / Gal ($)</label><input type="number" id="f-ppg" placeholder="0.000" step="0.001" inputmode="decimal" enterkeyhint="next" oninput="onFI('ppg')"></div>
           </div>
-          <div class="f"><label>Total Cost ($)</label><input type="number" id="f-total" placeholder="auto-calc" step="0.01" inputmode="decimal" enterkeyhint="next" oninput="onFI()"></div>
+          <div class="f"><label>Total Cost ($)</label><input type="number" id="f-total" placeholder="auto-calc" step="0.01" inputmode="decimal" enterkeyhint="next" oninput="onFI('total')"></div>
           <div class="fr">
             <div class="f"><label>Miles Since Last Fill</label><input type="number" id="f-miles" placeholder="auto" readonly></div>
             <div class="f"><label>MPG (this fill)</label><input type="number" id="f-mpg" placeholder="auto" readonly></div>
@@ -634,17 +634,21 @@ function renderHint(){
 }
 
 // ── AUTO CALC ─────────────────────────────────────────────────────
-function onFI(){
+function onFI(src){
   const galEl=document.getElementById('f-gal');
   const ppgEl=document.getElementById('f-ppg');
   const totEl=document.getElementById('f-total');
   const gal=parseFloat(galEl?.value);
   const ppg=parseFloat(ppgEl?.value);
   const tot=parseFloat(totEl?.value);
-  // fill the one field that's empty when the other two are known
-  if(gal>0&&ppg>0&&!(tot>0))totEl.value=(gal*ppg).toFixed(2);
-  else if(tot>0&&ppg>0&&!(gal>0))galEl.value=(tot/ppg).toFixed(3);
-  else if(tot>0&&gal>0&&!(ppg>0))ppgEl.value=(tot/gal).toFixed(3);
+  if(src!=='total'){
+    // user is editing gal or ppg — always recalculate total
+    if(gal>0&&ppg>0)totEl.value=(gal*ppg).toFixed(2);
+  } else {
+    // user is editing total — back-fill whichever of gal/ppg is missing
+    if(tot>0&&ppg>0&&!(gal>0))galEl.value=(tot/ppg).toFixed(3);
+    else if(tot>0&&gal>0&&!(ppg>0))ppgEl.value=(tot/gal).toFixed(3);
+  }
   onOI();
 }
 function onOI(){
