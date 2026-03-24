@@ -26,9 +26,14 @@ body::before{content:'';position:fixed;inset:0;background-image:linear-gradient(
 .alert-icon{font-size:20px;line-height:1}
 .alert-dot{position:absolute;top:-2px;right:-2px;width:8px;height:8px;border-radius:50%;background:var(--red);border:2px solid var(--bg);display:none}
 .alert-dot.show{display:block}
-.vpill{display:flex;align-items:center;gap:7px;background:var(--card);border:1px solid var(--bdr);border-radius:100px;padding:7px 14px;font-size:12px;cursor:pointer;transition:.2s;user-select:none}
+.vpill{display:flex;align-items:center;gap:7px;background:var(--card);border:1px solid var(--bdr);border-radius:100px;padding:7px 14px;font-size:12px;cursor:pointer;transition:.2s;user-select:none;position:relative}
 .vpill:active{transform:scale(.96)}
 .vdot{width:9px;height:9px;border-radius:50%;background:var(--fuel)}
+.vdrop{position:absolute;top:calc(100% + 8px);right:0;background:var(--card);border:1px solid var(--bdr);border-radius:12px;min-width:160px;box-shadow:0 8px 24px rgba(44,40,36,.12);z-index:200;overflow:hidden;display:none}
+.vdrop.open{display:block}
+.vdrop-item{display:flex;align-items:center;gap:10px;padding:11px 14px;font-size:12px;cursor:pointer;transition:background .15s}
+.vdrop-item:active,.vdrop-item:hover{background:var(--sur)}
+.vdrop-item.active{font-weight:700;color:var(--fuel)}
 
 /* STATS */
 .stats{display:grid;grid-template-columns:repeat(4,1fr);gap:1px;background:var(--bdr);flex-shrink:0}
@@ -253,10 +258,11 @@ canvas.mpg-chart{width:100%!important;height:160px!important}
         <div class="alert-icon">🔔</div>
         <div class="alert-dot" id="alertDot"></div>
       </div>
-      <div class="vpill" onclick="openVP()">
+      <div class="vpill" onclick="toggleVDrop(event)">
         <div class="vdot" id="hDot"></div>
         <span id="hV">My Car</span>
-        <span style="color:var(--mut)">›</span>
+        <span style="color:var(--mut)" id="vArrow">›</span>
+        <div class="vdrop" id="vDrop" onclick="event.stopPropagation()"></div>
       </div>
     </div>
   </div>
@@ -526,16 +532,6 @@ canvas.mpg-chart{width:100%!important;height:160px!important}
   </div>
 </div>
 
-<!-- VEHICLE PICKER OVERLAY -->
-<div class="overlay" id="vOv" onclick="closeVPOut(event)">
-  <div class="sheet">
-    <div class="handle"></div>
-    <div class="sh-title">🚗 Switch Vehicle</div>
-    <div id="vpList"></div>
-    <button class="b-out" style="margin-top:12px" onclick="closeVP();openSett()">⚙️ Manage Vehicles</button>
-  </div>
-</div>
-
 <!-- ALERTS OVERLAY -->
 <div class="overlay" id="aOv" onclick="closeAOut(event)">
   <div class="sheet">
@@ -572,6 +568,7 @@ function init(){
   retryQ();
   window.addEventListener('online',retryQ);
   setInterval(retryQ,60000);
+  document.addEventListener('click',()=>closeVDrop());
   // start on fuel tab by default
   sw('fuel');
 }
@@ -1149,31 +1146,34 @@ function saveVeh(){
   sv();renderVList();togAV();toast('🚗 Vehicle added!');
 }
 
-// ── VEHICLE PICKER ────────────────────────────────────────────────
-function openVP(){
-  const el=document.getElementById('vpList');
-  if(el){
-    el.innerHTML=S.vehicles.map(v=>`
-      <div class="vi ${v.id===S.activeVehicle?'sel':''}" onclick="vpSel('${v.id}')">
-        <div class="vdot" style="background:${v.color};width:12px;height:12px;border-radius:50%;flex-shrink:0"></div>
-        <div style="flex:1">
-          <div style="font-family:'Syne',sans-serif;font-size:13px;font-weight:700">${esc(v.name)}</div>
-          ${v.year||v.make?`<div style="font-size:11px;color:var(--mut)">${esc([v.year,v.make,v.model].filter(Boolean).join(' '))}</div>`:''}
-        </div>
-        ${v.id===S.activeVehicle?'<span style="color:var(--fuel);font-size:13px">✓</span>':''}
-      </div>`).join('');
-  }
-  document.getElementById('vOv').classList.add('open');
+// ── VEHICLE DROPDOWN ──────────────────────────────────────────────
+function toggleVDrop(e){
+  e.stopPropagation();
+  const drop=document.getElementById('vDrop');
+  const arrow=document.getElementById('vArrow');
+  const isOpen=drop.classList.contains('open');
+  if(isOpen){closeVDrop();return;}
+  drop.innerHTML=S.vehicles.map(v=>`
+    <div class="vdrop-item ${v.id===S.activeVehicle?'active':''}" onclick="vpSel('${v.id}')">
+      <div style="width:9px;height:9px;border-radius:50%;background:${v.color};flex-shrink:0"></div>
+      <span>${esc(v.name)}</span>
+      ${v.id===S.activeVehicle?'<span style="margin-left:auto">✓</span>':''}
+    </div>`).join('')+
+    `<div class="vdrop-item" style="border-top:1px solid var(--bdr);color:var(--mut)" onclick="closeVDrop();openSett()">⚙️ Manage</div>`;
+  drop.classList.add('open');
+  if(arrow)arrow.textContent='⌄';
 }
-function closeVP(){document.getElementById('vOv').classList.remove('open');}
-function closeVPOut(e){if(e.target===document.getElementById('vOv'))closeVP();}
+function closeVDrop(){
+  document.getElementById('vDrop')?.classList.remove('open');
+  const arrow=document.getElementById('vArrow');
+  if(arrow)arrow.textContent='›';
+}
 function vpSel(id){
   S.activeVehicle=id;sv();
   renderHdr();renderStats();renderHint();
   if(document.querySelector('#p-dash.active'))renderDash();
   if(document.querySelector('#p-history.active'))renderHist();
-  closeVP();
-  toast('🚗 Switched to '+esc(S.vehicles.find(v=>v.id===id)?.name||''));
+  closeVDrop();
 }
 
 // ── SETTINGS MODAL ────────────────────────────────────────────────
