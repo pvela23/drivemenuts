@@ -1228,10 +1228,17 @@ async function syncE(entry,b,m){
   const vn=v?`${v.name}${v.year?' ('+v.year+')':''}`:'Unknown';
   try{
     const payload=JSON.stringify({sheet:shN(entry.type),row:bRow(entry,vn)});
-    await fetchWithTimeout(S.sheetsUrl,{method:'POST',headers:{'Content-Type':'text/plain;charset=utf-8'},body:payload});
+    const res=await fetchWithTimeout(S.sheetsUrl,{method:'POST',headers:{'Content-Type':'text/plain;charset=utf-8'},body:payload});
+    if(!res.ok){throw new Error('HTTP '+res.status);}
+    const json=await res.json().catch(()=>null);
+    if(json?.status==='error'){throw new Error(json.msg||'Script error');}
     setSS(b,m,'ok','✓ Synced to Google Sheets');
     setTimeout(()=>setSS(b,m,'idle','Ready to sync'),3000);
-  }catch(e){setSS(b,m,'err','✗ Sync failed — retrying when online');S.pending.push({entry,b,m});sv();}
+  }catch(e){
+    const reason=e.name==='AbortError'?'Timed out (8s)':e.message||'Network error';
+    setSS(b,m,'err','✗ '+reason);
+    S.pending.push({entry,b,m});sv();
+  }
 }
 async function fetchWithTimeout(url,opts,ms=8000){
   const ctrl=new AbortController();
