@@ -517,7 +517,8 @@ canvas.mpg-chart{width:100%!important;height:160px!important}
     </div>
     <button class="bsave" onclick="saveSett()">Save Settings</button>
     <button class="bsave" id="forceSyncBtn" onclick="forceSync()" style="background:var(--wash);margin-top:8px">☁️ Force Sync Now</button>
-    <div id="forceSyncStatus" style="font-size:11px;color:var(--mut);margin-top:6px;min-height:16px"></div>
+    <button class="b-out" onclick="testConn()">🔍 Test Connection</button>
+    <div id="forceSyncStatus" style="font-size:11px;color:var(--mut);margin-top:6px;min-height:16px;word-break:break-all;line-height:1.6"></div>
     <div class="div"></div>
     <div class="sh-sec">Data</div>
     <button class="bsave" onclick="exportCSV()">📥 Export Data as CSV</button>
@@ -1283,6 +1284,19 @@ async function syncESilent(entry){
     const json=await res.json().catch(()=>null);
     return json?.status!=='error';
   }catch{return false;}
+}
+async function testConn(){
+  const status=document.getElementById('forceSyncStatus');
+  const url=document.getElementById('shUrl')?.value.trim()||S.sheetsUrl;
+  if(!url){if(status)status.textContent='⚠️ No Sheets URL — enter it above first';return;}
+  if(status)status.textContent='Testing…';
+  try{
+    const res=await fetchWithTimeout(url,{method:'POST',headers:{'Content-Type':'text/plain;charset=utf-8'},body:'{"test":true}'},10000);
+    const text=await res.text().catch(()=>'(no body)');
+    if(status)status.textContent=`HTTP ${res.status} ${res.statusText}\n${text.slice(0,200)}`;
+  }catch(e){
+    if(status)status.textContent=`Error: ${e.name} — ${e.message}`;
+  }
 }
 async function forceSync(){
   const btn=document.getElementById('forceSyncBtn');
