@@ -1257,12 +1257,32 @@ async function syncBatch(entries){
   return{ok,fail};
 }
 let _retrying=false;
-async function retryQ(){
+async function retryQ(silent=true){
   if(_retrying||!S.sheetsUrl||!S.pending.length)return;
   _retrying=true;
   const p=[...S.pending];S.pending=[];sv();
-  for(const item of p){await syncE(item.entry,item.b,item.m);await new Promise(r=>setTimeout(r,300));}
+  let allOk=true;
+  for(const item of p){
+    const ok=await syncESilent(item.entry);
+    if(!ok){S.pending.push(item);allOk=false;}
+    await new Promise(r=>setTimeout(r,300));
+  }
+  sv();
+  if(!silent&&allOk)toast('☁️ Pending items synced!');
   _retrying=false;
+}
+async function syncESilent(entry){
+  // retry without touching DOM — returns true on success
+  if(!S.sheetsUrl)return false;
+  const v=S.vehicles.find(v=>v.id===entry.vid);
+  const vn=v?`${v.name}${v.year?' ('+v.year+')':''}`:'Unknown';
+  try{
+    const payload=JSON.stringify({sheet:shN(entry.type),row:bRow(entry,vn)});
+    const res=await fetchWithTimeout(S.sheetsUrl,{method:'POST',headers:{'Content-Type':'text/plain;charset=utf-8'},body:payload});
+    if(!res.ok)return false;
+    const json=await res.json().catch(()=>null);
+    return json?.status!=='error';
+  }catch{return false;}
 }
 async function forceSync(){
   const btn=document.getElementById('forceSyncBtn');
@@ -1273,7 +1293,7 @@ async function forceSync(){
   if(btn)btn.disabled=true;
   if(status)status.textContent=`Syncing ${n} pending item${n>1?'s':''}…`;
   _retrying=false; // allow retryQ to run even if a previous run stalled
-  await retryQ();
+  await retryQ(false);
   const left=S.pending.length;
   if(btn)btn.disabled=false;
   if(status)status.textContent=left===0?`✓ All ${n} item${n>1?'s':''} synced!`:`⚠️ ${left} item${left>1?'s':''} still failed — check your Sheets URL`;
