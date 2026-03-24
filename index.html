@@ -253,7 +253,7 @@ canvas.mpg-chart{width:100%!important;height:160px!important}
         <div class="alert-icon">🔔</div>
         <div class="alert-dot" id="alertDot"></div>
       </div>
-      <div class="vpill" onclick="openSett()">
+      <div class="vpill" onclick="openVP()">
         <div class="vdot" id="hDot"></div>
         <span id="hV">My Car</span>
         <span style="color:var(--mut)">›</span>
@@ -523,6 +523,16 @@ canvas.mpg-chart{width:100%!important;height:160px!important}
     <div class="sh-sec">Data</div>
     <button class="bsave" onclick="exportCSV()">📥 Export Data as CSV</button>
     <button class="bdanger" onclick="clearAll()">🗑️ Clear All Local Data</button>
+  </div>
+</div>
+
+<!-- VEHICLE PICKER OVERLAY -->
+<div class="overlay" id="vOv" onclick="closeVPOut(event)">
+  <div class="sheet">
+    <div class="handle"></div>
+    <div class="sh-title">🚗 Switch Vehicle</div>
+    <div id="vpList"></div>
+    <button class="b-out" style="margin-top:12px" onclick="closeVP();openSett()">⚙️ Manage Vehicles</button>
   </div>
 </div>
 
@@ -1137,6 +1147,33 @@ function saveVeh(){
   if(S.vehicles.length>=5){toast('⚠️ Max 5 vehicles');return;}
   S.vehicles.push({id:uid(),name,year:document.getElementById('av-y')?.value||'',make:document.getElementById('av-mk')?.value||'',model:document.getElementById('av-mo')?.value||'',color:selCol});
   sv();renderVList();togAV();toast('🚗 Vehicle added!');
+}
+
+// ── VEHICLE PICKER ────────────────────────────────────────────────
+function openVP(){
+  const el=document.getElementById('vpList');
+  if(el){
+    el.innerHTML=S.vehicles.map(v=>`
+      <div class="vi ${v.id===S.activeVehicle?'sel':''}" onclick="vpSel('${v.id}')">
+        <div class="vdot" style="background:${v.color};width:12px;height:12px;border-radius:50%;flex-shrink:0"></div>
+        <div style="flex:1">
+          <div style="font-family:'Syne',sans-serif;font-size:13px;font-weight:700">${esc(v.name)}</div>
+          ${v.year||v.make?`<div style="font-size:11px;color:var(--mut)">${esc([v.year,v.make,v.model].filter(Boolean).join(' '))}</div>`:''}
+        </div>
+        ${v.id===S.activeVehicle?'<span style="color:var(--fuel);font-size:13px">✓</span>':''}
+      </div>`).join('');
+  }
+  document.getElementById('vOv').classList.add('open');
+}
+function closeVP(){document.getElementById('vOv').classList.remove('open');}
+function closeVPOut(e){if(e.target===document.getElementById('vOv'))closeVP();}
+function vpSel(id){
+  S.activeVehicle=id;sv();
+  renderHdr();renderStats();renderHint();
+  if(document.querySelector('#p-dash.active'))renderDash();
+  if(document.querySelector('#p-history.active'))renderHist();
+  closeVP();
+  toast('🚗 Switched to '+esc(S.vehicles.find(v=>v.id===id)?.name||''));
 }
 
 // ── SETTINGS MODAL ────────────────────────────────────────────────
